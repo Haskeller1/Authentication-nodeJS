@@ -6,20 +6,24 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "H.Salbu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Haskeller1/Authentication-nodeJS.git"
+  },
+  "author": "",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Haskeller1/Authentication-nodeJS/issues"
+  },
+  "homepage": "https://github.com/Haskeller1/Authentication-nodeJS#readme",
   "dependencies": {
-    "bcrypt": "^4.0.1",
     "body-parser": "^1.19.0",
     "dotenv": "^8.2.0",
     "ejs": "^3.0.1",
     "express": "^4.17.1",
     "express-session": "^1.17.0",
-    "md5": "^2.2.1",
-    "mongoose": "^5.9.3",
-    "mongoose-encryption": "^2.0.2",
+    "mongoose": "^5.9.5",
     "passport": "^0.4.1",
-    "passport-local": "^1.0.0",
     "passport-local-mongoose": "^6.0.1"
   }
 }
