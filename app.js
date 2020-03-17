@@ -2,29 +2,40 @@
 require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const session = require("express-session");
+const passport = require("passport");
+const passportLocalMongoose = require("passport-local-mongoose");
+
 const app = express();
-
-mongoose.connect("mongodb://localhost:27017/Users", { useNewUrlParser: true, useUnifiedTopology: true }, function (err) {
-    if (!err) { }
-    else console.log(err);
-});
-
-const userSchema = new mongoose.Schema({
-    email: String,
-    password: String
-});
-
-userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"]});
-
-const User = mongoose.model("user", userSchema);
-
-
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: true,
+    saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+mongoose.connect("mongodb://localhost:27017/userDB", { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.set("useCreateIndex", true);
+
+const userSchema = new mongoose.Schema();
+
+userSchema.plugin(passportLocalMongoose, {
+    usernameField: 'email'
+});
+
+const User = new mongoose.model("User", userSchema);
+
+passport.use(User.createStrategy());
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
 app.get("/", function (req, res) {
     res.render("home");
@@ -39,43 +50,49 @@ app.get("/register", function (req, res) {
 });
 
 app.get("/secrets", function (req, res) {
-    res.send("<h1>You do not have permission to access this resource.</h1>")
+    if (req.isAuthenticated()) res.render("secrets")
+    else res.redirect("/login");
 });
 
 app.get("/logout", function (req, res) {
-    res.redirect("/");
-})
-
-app.post("/register", function (req, res) {
-    const newUser = new User({
-        email: req.body.email,
-        password: req.body.password
-    })
-    newUser.save(function (err) {
-        if (err) console.log(err);
-        else {
-            res.render("secrets");
-        }
-    })
+    req.logout();
+    res.redirect("/")
 });
 
-app.post("/login", function (req, res) {
-    const username = req.body.username;
-    const password = req.body.password;
-    User.findOne({email: username}, function (err, foundUser) {
-        if (err) console.log(err);
+app.post("/register", function (req, res) {
+    User.register({ email: req.body.email }, req.body.password, function (err) {
+        if (err) {
+            console.log(err);
+            return (res.redirect("/register"));
+        }
         else {
-            if (foundUser) {
-                if(foundUser.password === password) {
-                    res.render("secrets");
-                }
-                else res.send("<h1>Could not find that user</h1><h1>Please check your email and password</h1>");
-            }
+            passport.authenticate("local")(req, res, function () {
+                return (res.redirect("/secrets"));
+            });
         }
     });
 });
 
+app.post("/login", function (req, res) {
+    const user = new User({
+        email: req.body.email,
+        password: req.body.password
+    })
+    req.login(user, function (err) {
+        if (err) console.log(err);
+        else {
+            passport.authenticate("local")(req, res, function () {
+                res.redirect("/secrets");
+            });
+        };
+    });
+});
 
-app.listen(3000, function () {
-    console.log("Listening to requests on port 3000.");
+const {
+    PORT = 3000
+} = process.env
+
+app.listen(PORT, function () {
+    console.log(`Listening to requests on port ${PORT}`);
 })
+
